@@ -1,1 +1,1 @@
-# LSAMP Research
+# Research
