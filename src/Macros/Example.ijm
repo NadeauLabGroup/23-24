@@ -7,6 +7,6 @@ macro "DeltaF [f1]"{
     run("Convert to Mask", "method=MaxEntropy background=Dark calculate");
     run("Z Code Stack");
     selectImage("Depth Coded Stack");
-    run("Z Project...", "projection=Median");
-    run("Find Maxima...", "noise=50 output=[Point Selection] light");
+    run("Z Project...", "projection=[Max Intensity]");
+    selectImage("Depth Coded Stack");   
 }
