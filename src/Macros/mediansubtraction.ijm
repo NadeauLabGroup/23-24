@@ -7,4 +7,3 @@ imageCalculator("Subtract stack", avi, median);
 run("8-bit");
 }
 
-
