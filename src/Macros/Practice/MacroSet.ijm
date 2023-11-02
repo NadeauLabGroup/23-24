@@ -22,6 +22,7 @@ macro "Print String" {
 
 macro "Macro 1 [f1]" {
     print("The user pressed 'f1'");
+    
 }
 
 macro "Macro 2 [f2]" {
