@@ -10,40 +10,67 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.plugin.PlugIn;
 
-Public class Track {
+Public class Track implements PlugIn{
+  @Override
   public void run() {
-    //Get the active unchanged image 
+    //Unchanged image 
     ImagePlus unchanged = IJ.getImage();
 
     // Call the MHI macro
     IJ.runMacroFile("MHI [f1]");
 
     //Get the MHI image for later references 
-    //ImagePlus mhiImage = IJ.getImage();
+    ImagePlus mhiImage = IJ.getImage();
     
-    //Get stack of all the images and pass it in 
-    //Call upon the tracking algo and pass in the unchanged image stack
-
-    //get the stack of the image produced by the tracker and store them
-
+    //Run the tracking algo function, passes in the unchanged image
+    ImagePlus TrackImage = null;
 
     //Get the tracking and the tracking algo images togather, Problem with this because the tracking algo creats a stack.
-    ///ImagePlus combinedResult = combineImagesSideBySide(mhiImage, ......);
-
-    // Show the combined result in a interfaces
-    //combinedResult.show();
+    combinedResult(mhiImage, TrackImage);
 }
 
- //Calls upon a tracking algo and pass in a stack of the unchanged images
-  //private TrackMate...(Image stack){
+ //Calls upon a tracking algo and pass in the unchanged images
+  //private ImagePlus runTrackMate(unchanged){
+
+
 
   //}
 
 
   //Interface creation and combining the two results
-  //private ImagePlus combineImagesSideBySide(mhiImage, ......){
+  public void combinedResult(ImagePlus mhiImage, ImagePlus TrackImage) {
 
-  //}
+    //makes mhi into a buffered image
+    BufferedImage MHI = mhiImage.getBufferedImage();
+    //makes TrackImage into a buffered image
+    BufferedImage TRACK = null;
 
+
+    // main window frame
+    JFrame frame = new JFrame("MHI & Track");
+    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    
+    //split pane to hold two images
+    JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+    
+    //labels to hold the images
+    JLabel label1 = new JLabel(new ImageIcon(MHI));
+    //JLabel label2 = new JLabel(new ImageIcon(TRACK));
+    
+    // Add labels to the split pane
+    splitPane.setLeftComponent(new JScrollPane(label1));
+    //splitPane.setRightComponent(new JScrollPane(label2));
+    
+    // split divider 
+    splitPane.setDividerLocation(frame.getWidth() / 2);
+    frame.getContentPane().add(splitPane, BorderLayout.CENTER);
+    
+    //packs the frame
+    frame.pack();
+    
+    // Set the frame size and make it visible
+    frame.setSize(800, 600);
+    frame.setVisible(true);
+}
  
 }
