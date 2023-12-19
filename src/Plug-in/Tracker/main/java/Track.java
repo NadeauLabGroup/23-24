@@ -30,7 +30,7 @@ Public class Track implements PlugIn{
 }
 
  //Calls upon a tracking algo and pass in the unchanged images
-  //private ImagePlus runTrackMate(unchanged){
+  //private ImagePlus runTrack(unchanged){
 
 
 
