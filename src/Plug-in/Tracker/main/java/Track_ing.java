@@ -1,4 +1,3 @@
-
 /******************************************************************************
 # Author:           NadeauLabGroup
 # Date:             November 20, 2023
@@ -30,25 +29,25 @@ public class Track_ing implements PlugIn {
         mhiScript.run("");
 
         // Get the MHI image for later references
-        ImagePlus mhiImage = null;
+        ImagePlus mhiImage = mhiScript.getMHIImage();
 
         // Placeholder for tracking algorithm
-        ImagePlus trackImage = null; // TODO: Implement the tracking algorithm
+        ImagePlus trackImage = runTrack(unchanged); // TODO: Implement the tracking algorithm
 
         // Combine MHI and tracking images
         combinedResult(mhiImage, trackImage);
     }
 
     // TODO: Implement the tracking algorithm
-    // private ImagePlus runTrack(ImagePlus unchanged) {
-    // ...
-    // }
+    private ImagePlus runTrack(ImagePlus unchanged) {
+        return unchanged;
+    }
 
     // Interface creation and combining the two results
     public void combinedResult(ImagePlus mhiImage, ImagePlus trackImage) {
         // Convert images to BufferedImage
-        BufferedImage MHI = null;
-        BufferedImage TRACK = null; // TODO: Initialize with tracking image
+        BufferedImage MHI = (mhiImage != null) ? mhiImage.getBufferedImage() : createPlaceholderImage("MHI Image Not Available");
+        BufferedImage TRACK = (trackImage != null) ? trackImage.getBufferedImage() : createPlaceholderImage("Tracking Image Not Available"); // TODO: Initialize with tracking image
 
         // Main window frame
         JFrame frame = new JFrame("MHI & Track");
@@ -57,7 +56,7 @@ public class Track_ing implements PlugIn {
         // Split pane to hold two images
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         JLabel label1 = new JLabel(new ImageIcon(MHI));
-        JLabel label2 = new JLabel("Tracking Image Not Available"); // Placeholder label
+        JLabel label2 = new JLabel(new ImageIcon(TRACK));
 
         // Add labels to the split pane
         splitPane.setLeftComponent(new JScrollPane(label1));
@@ -72,6 +71,17 @@ public class Track_ing implements PlugIn {
         frame.setSize(800, 600);
         frame.setVisible(true);
     }
+    // Method to create a placeholder image
+    private BufferedImage createPlaceholderImage(String text) {
+        BufferedImage img = new BufferedImage(300, 300, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = img.createGraphics();
+        g2d.setPaint(Color.WHITE);
+        g2d.fillRect(0, 0, 300, 300);
+        g2d.setPaint(Color.BLACK);
+        g2d.drawString(text, 10, 150);
+        g2d.dispose();
+        return img;
+    }
 }
 
 /*
@@ -80,7 +90,7 @@ public class Track_ing implements PlugIn {
  * of simplicity and readability
  */
 class MHI_Script implements PlugIn {
-    
+    private ImagePlus mhiImage;
     // Main method to run all privately defined methods
     public void run(String arg) {
         // Get the active image ID
@@ -92,6 +102,9 @@ class MHI_Script implements PlugIn {
         //zCodeStack();
         //depthCodedStack();
         //zProject();
+    }
+    public ImagePlus getMHIImage() {
+        return mhiImage;
     }
 
     // Cookbook > T-Functions > Delta F Up
