@@ -97,23 +97,23 @@ class MHI_Script implements PlugIn {
         //int imageID = IJ.getImage().getID();
 
         // Perform the operations
-        //deltaFUp();
-        //autoThreshold();
-        //zCodeStack();
-        //depthCodedStack();
-        //zProject();
+        deltaFUp();
+        autoThreshold();
+        zCodeStack();
+        depthCodedStack();
+        zProject();
     }
     public ImagePlus getMHIImage() {
         return mhiImage;
     }
 
     // Cookbook > T-Functions > Delta F Up
-    //private void deltaFUp() {
-       // IJ.run("Delta F Up");
-    //}
+    private void deltaFUp() {
+       IJ.run("Delta F Up");
+    }
 
     // Image > Adjust > Threshold
-    /*private void autoThreshold() {
+    private void autoThreshold() {
         IJ.setAutoThreshold(IJ.getImage(), "MaxEntropy dark");
         IJ.run("Convert to Mask", "method=MaxEntropy background=Dark calculate");
 
@@ -124,20 +124,20 @@ class MHI_Script implements PlugIn {
          */
         // IJ.setOption("BlackBackground", false);
 
-    //}
+    }
 
     // Cookbook > Z-Functions > Z Code Stack
-    //private void zCodeStack() {
-    //IJ.run("Z Code Stack");
-    //}
+    private void zCodeStack() {
+    IJ.run("Z Code Stack");
+    }
 
     // Cookbook > Z-Functions > Depth Coded Stack
-    //private void depthCodedStack() {
-    //    IJ.selectWindow("Depth Coded Stack");
-    //}
+    private void depthCodedStack() {
+       IJ.selectWindow("Depth Coded Stack");
+    }
 
     // Image > Stacks > Z-project
-    //private void zProject() {
-    //    IJ.run("Z Project...", "projection=[Max Intensity]");
-    //}
+    private void zProject() {
+        IJ.run("Z Project...", "projection=[Max Intensity]");
+    }
 }
