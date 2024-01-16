@@ -94,12 +94,23 @@ public class Track_ing implements PlugIn {
         splitPane.setRightComponent(new JScrollPane(label2));
 
         // Split divider
-        splitPane.setDividerLocation(frame.getWidth() / 2);
+        int dividerLocation = MHI.getWidth() / (MHI.getWidth() + TRACK.getWidth());
+        splitPane.setDividerLocation(dividerLocation);
+
         frame.getContentPane().add(splitPane, BorderLayout.CENTER);
+
+
+        // Calculate frame size
+        int frameWidth = MHI.getWidth() + TRACK.getWidth();
+        int frameHeight = Math.max(MHI.getHeight(), TRACK.getHeight());
+        frame.setSize(frameWidth, frameHeight);
+
+
+        // Ensure the frame is not too small
+        frame.setMinimumSize(new Dimension(800, 600));
 
         // Pack and display the frame
         frame.pack();
-        frame.setSize(800, 600);
         frame.setVisible(true);
     }
     // Method to create a placeholder image
@@ -113,7 +124,6 @@ public class Track_ing implements PlugIn {
         g2d.dispose();
         return img;
     }
-
 }
 
 /*
