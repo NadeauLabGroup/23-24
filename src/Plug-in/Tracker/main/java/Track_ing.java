@@ -21,6 +21,12 @@ import java.awt.image.BufferedImage;
 public class Track_ing implements PlugIn {
     @Override
     public void run(String arg) {
+
+        if (WindowManager.getImageCount() == 0) {
+            IJ.log("No image open in ImageJ");
+            return;
+        }
+
         // Unchanged image
         ImagePlus unchanged = IJ.getImage();
 
@@ -34,6 +40,13 @@ public class Track_ing implements PlugIn {
         // Placeholder for tracking algorithm
         ImagePlus trackImage = runTrack(unchanged); // TODO: Implement the tracking algorithm
 
+        if (mhiImage == null) {
+            IJ.log("MHI Image is null in Track_ing");
+        }
+        if (trackImage == null) {
+            IJ.log("Track Image is null in Track_ing");
+        }
+        
         // Combine MHI and tracking images
         combinedResult(mhiImage, trackImage);
     }
@@ -45,31 +58,48 @@ public class Track_ing implements PlugIn {
 
     // Interface creation and combining the two results
     public void combinedResult(ImagePlus mhiImage, ImagePlus trackImage) {
-        // Convert images to BufferedImage
-        BufferedImage MHI = (mhiImage != null) ? mhiImage.getBufferedImage() : createPlaceholderImage("MHI Image Not Available");
-        BufferedImage TRACK = (trackImage != null) ? trackImage.getBufferedImage() : createPlaceholderImage("Tracking Image Not Available"); // TODO: Initialize with tracking image
-
-        // Main window frame
-        JFrame frame = new JFrame("MHI & Track");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        // Split pane to hold two images
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        JLabel label1 = new JLabel(new ImageIcon(MHI));
-        JLabel label2 = new JLabel(new ImageIcon(TRACK));
-
-        // Add labels to the split pane
-        splitPane.setLeftComponent(new JScrollPane(label1));
-        splitPane.setRightComponent(new JScrollPane(label2));
-
-        // Split divider
-        splitPane.setDividerLocation(frame.getWidth() / 2);
-        frame.getContentPane().add(splitPane, BorderLayout.CENTER);
-
-        // Pack and display the frame
-        frame.pack();
-        frame.setSize(800, 600);
-        frame.setVisible(true);
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                BufferedImage MHI = null;
+                BufferedImage TRACK = null;
+    
+                if (mhiImage != null) {
+                    MHI = mhiImage.getBufferedImage();
+                } else {
+                    MHI = createPlaceholderImage("MHI Image Not Available");
+                    IJ.log("MHI Image is null in combinedResult");
+                }
+    
+                if (trackImage != null) {
+                    TRACK = trackImage.getBufferedImage();
+                } else {
+                    TRACK = createPlaceholderImage("Tracking Image Not Available");
+                    IJ.log("Track Image is null in combinedResult");
+                }
+                
+                // Main window frame
+                JFrame frame = new JFrame("MHI & Track");
+                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
+                // Split pane to hold two images
+                JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+                JLabel label1 = new JLabel(new ImageIcon(MHI));
+                JLabel label2 = new JLabel(new ImageIcon(TRACK));
+        
+                // Add labels to the split pane
+                splitPane.setLeftComponent(new JScrollPane(label1));
+                splitPane.setRightComponent(new JScrollPane(label2));
+        
+                // Split divider
+                splitPane.setDividerLocation(frame.getWidth() / 2);
+                frame.getContentPane().add(splitPane, BorderLayout.CENTER);
+        
+                // Pack and display the frame
+                frame.pack();
+                frame.setSize(800, 600);
+                frame.setVisible(true);
+            }
+        });
     }
     // Method to create a placeholder image
     private BufferedImage createPlaceholderImage(String text) {
@@ -90,12 +120,10 @@ public class Track_ing implements PlugIn {
  * of simplicity and readability
  */
 class MHI_Script implements PlugIn {
+    // Get the active image ID
     private ImagePlus mhiImage;
     // Main method to run all privately defined methods
     public void run(String arg) {
-        // Get the active image ID
-        //int imageID = IJ.getImage().getID();
-
         // Perform the operations
         deltaFUp();
         autoThreshold();
@@ -139,5 +167,9 @@ class MHI_Script implements PlugIn {
     // Image > Stacks > Z-project
     private void zProject() {
         IJ.run("Z Project...", "projection=[Max Intensity]");
+        mhiImage = WindowManager.getCurrentImage();
+        if (mhiImage == null) {
+            IJ.log("MHI Image is null after Z Project");
+        }
     }
 }
