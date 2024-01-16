@@ -40,7 +40,7 @@ public class Track_ing implements PlugIn {
         // Placeholder for tracking algorithm
         ImagePlus trackImage = runTrack(unchanged); // TODO: Implement the tracking algorithm
 
-        if (mhiImage == null) {
+        if (mhiImage== null) {
             IJ.log("MHI Image is null in Track_ing");
         }
         if (trackImage == null) {
@@ -55,51 +55,52 @@ public class Track_ing implements PlugIn {
     private ImagePlus runTrack(ImagePlus unchanged) {
         return unchanged;
     }
+    // Method to convert ImagePlus to BufferedImage
+    private BufferedImage convertToBufferedImage(ImagePlus imp) {
+        //check if the image null
+        if (imp == null) {
+            return createPlaceholderImage("ImagePlus is null");
+        }
+    
+        ImageProcessor ip = imp.getProcessor();
+        if (ip == null) {
+            return createPlaceholderImage("ImageProcessor is null");
+        }
+    
+        BufferedImage bi = new BufferedImage(ip.getWidth(), ip.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = bi.createGraphics();
+        g2d.drawImage(ip.createImage(), 0, 0, null);
+        g2d.dispose();
+        return bi;
+    }
 
     // Interface creation and combining the two results
     public void combinedResult(ImagePlus mhiImage, ImagePlus trackImage) {
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                BufferedImage MHI = null;
-                BufferedImage TRACK = null;
+        // Convert images to BufferedImage
+        BufferedImage MHI = (mhiImage != null) ? convertToBufferedImage(mhiImage) : createPlaceholderImage("MHI Image Not Available");
+        BufferedImage TRACK = (trackImage != null) ? convertToBufferedImage(trackImage) : createPlaceholderImage("Tracking Image Not Available");
     
-                if (mhiImage != null) {
-                    MHI = mhiImage.getBufferedImage();
-                } else {
-                    MHI = createPlaceholderImage("MHI Image Not Available");
-                    IJ.log("MHI Image is null in combinedResult");
-                }
-    
-                if (trackImage != null) {
-                    TRACK = trackImage.getBufferedImage();
-                } else {
-                    TRACK = createPlaceholderImage("Tracking Image Not Available");
-                    IJ.log("Track Image is null in combinedResult");
-                }
-                
-                // Main window frame
-                JFrame frame = new JFrame("MHI & Track");
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        
-                // Split pane to hold two images
-                JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-                JLabel label1 = new JLabel(new ImageIcon(MHI));
-                JLabel label2 = new JLabel(new ImageIcon(TRACK));
-        
-                // Add labels to the split pane
-                splitPane.setLeftComponent(new JScrollPane(label1));
-                splitPane.setRightComponent(new JScrollPane(label2));
-        
-                // Split divider
-                splitPane.setDividerLocation(frame.getWidth() / 2);
-                frame.getContentPane().add(splitPane, BorderLayout.CENTER);
-        
-                // Pack and display the frame
-                frame.pack();
-                frame.setSize(800, 600);
-                frame.setVisible(true);
-            }
-        });
+        // Main window frame
+        JFrame frame = new JFrame("MHI & Track");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // Split pane to hold two images
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        JLabel label1 = new JLabel(new ImageIcon(MHI));
+        JLabel label2 = new JLabel(new ImageIcon(TRACK));
+
+        // Add labels to the split pane
+        splitPane.setLeftComponent(new JScrollPane(label1));
+        splitPane.setRightComponent(new JScrollPane(label2));
+
+        // Split divider
+        splitPane.setDividerLocation(frame.getWidth() / 2);
+        frame.getContentPane().add(splitPane, BorderLayout.CENTER);
+
+        // Pack and display the frame
+        frame.pack();
+        frame.setSize(800, 600);
+        frame.setVisible(true);
     }
     // Method to create a placeholder image
     private BufferedImage createPlaceholderImage(String text) {
@@ -112,6 +113,7 @@ public class Track_ing implements PlugIn {
         g2d.dispose();
         return img;
     }
+
 }
 
 /*
@@ -126,10 +128,19 @@ class MHI_Script implements PlugIn {
     public void run(String arg) {
         // Perform the operations
         deltaFUp();
+        checkImage("After Delta F Up");
+
         autoThreshold();
+        checkImage("After Auto Threshold");
+
         zCodeStack();
+        checkImage("After Z Code Stack");
+
         depthCodedStack();
+        checkImage("After Depth Coded Stack");
+
         zProject();
+        checkImage("After Z Project");
     }
     public ImagePlus getMHIImage() {
         return mhiImage;
@@ -144,14 +155,6 @@ class MHI_Script implements PlugIn {
     private void autoThreshold() {
         IJ.setAutoThreshold(IJ.getImage(), "MaxEntropy dark");
         IJ.run("Convert to Mask", "method=MaxEntropy background=Dark calculate");
-
-        /*
-         * For some reason, this line caused an error in the console,
-         * however final desired product is produced. Come back to edit
-         * if needed
-         */
-        // IJ.setOption("BlackBackground", false);
-
     }
 
     // Cookbook > Z-Functions > Z Code Stack
@@ -167,9 +170,14 @@ class MHI_Script implements PlugIn {
     // Image > Stacks > Z-project
     private void zProject() {
         IJ.run("Z Project...", "projection=[Max Intensity]");
-        mhiImage = WindowManager.getCurrentImage();
+        mhiImage = IJ.getImage();;
         if (mhiImage == null) {
             IJ.log("MHI Image is null after Z Project");
+        }
+    }
+    private void checkImage(String stage) {
+        if (WindowManager.getCurrentImage() == null) {
+            IJ.log("Image is null at " + stage);
         }
     }
 }
