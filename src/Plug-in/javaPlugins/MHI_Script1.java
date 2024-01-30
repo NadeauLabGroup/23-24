@@ -8,7 +8,7 @@ import java.awt.*;
 /* This plugin runs a script to produce an MHI for an active image. 
 Fiji commands and functions are redefined as Java methods for sake 
 of simplicity and readability */
-public class MHI_Script implements PlugIn {
+public class MHI_Script1 implements PlugIn {
 
     //Main method to run all privately defined methods
     public void run(String arg) {
