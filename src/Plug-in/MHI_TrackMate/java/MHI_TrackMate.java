@@ -38,8 +38,8 @@ public class MHI_TrackMate implements PlugIn {
 
         // Create a deep copy
         mhiImage = original.duplicate();
-
-        ImagePlus trackImage = null;
+        closeAllExcept(mhiImage,original);
+        
         ImagePlus mhi = null;
 
         //MHI
@@ -50,11 +50,23 @@ public class MHI_TrackMate implements PlugIn {
             IJ.log("MHI Image is null");
             return; 
         }
+        closeAllExcept(mhiScript.getMHIImage(), original);
                 
         // Tracking algorithm and the calls on combined 
         launchTrackMate(original);
     }
-
+    private void closeAllExcept(ImagePlus keepOpen1, ImagePlus keepOpen2) {
+        int[] windowList = WindowManager.getIDList();
+        if (windowList != null) {
+            for (int id : windowList) {
+                ImagePlus imp = WindowManager.getImage(id);
+                if (imp != null && (keepOpen1 == null || !imp.equals(keepOpen1)) && (keepOpen2 == null || !imp.equals(keepOpen2))) {
+                    imp.changes = false; // Prevent "Save changes" 
+                    imp.close();
+                }
+            }
+        }
+    }
     /** TODO: Implement the tracking algorithm */
     private void launchTrackMate(ImagePlus image) {
         if (!image.isVisible()) {
@@ -136,18 +148,7 @@ public class MHI_TrackMate implements PlugIn {
 
 
     // Hide all other windows
-    int[] ids = WindowManager.getIDList();
-    if (ids != null) {
-        for (int id : ids) {
-            ImagePlus imp = WindowManager.getImage(id);
-            if (imp != null && !imp.equals(mhiImage) && !imp.equals(trackImage)) {
-                ImageWindow win = imp.getWindow();
-                if (win != null) { // Ensure window exists before hiding
-                    win.setVisible(false);
-                }
-            }
-        }
-    }
+    closeAllExcept(mhiImage, trackImage);
     // Ensure thread-safety when modifying GUI components
     SwingUtilities.invokeLater(() -> {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -175,8 +176,6 @@ public class MHI_TrackMate implements PlugIn {
             windowTrack.setLocation(xPositionMHI + windowMHI.getWidth(), yPosition);
         }
     });
-
-}
 
 }
 
@@ -219,6 +218,7 @@ class MHI_Script implements PlugIn {
     private void performOperation(String operationName, Runnable operation) {
         operation.run();
         updateImageToLatest();
+        MHI_TrackMate.this.closeAllExcept(this.image, MHI_TrackMate.this.original);
     }
 
     public ImagePlus getMHIImage() {
@@ -256,4 +256,6 @@ class MHI_Script implements PlugIn {
             this.image = latestImage;
         }
     }
+}
+
 }
