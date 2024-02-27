@@ -32,17 +32,11 @@ public class MHI_TrackMate implements PlugIn {
             IJ.log("No image open in ImageJ");
             return;
         }
-
-        // Original image
         original = IJ.getImage();
-
-        // Create a deep copy
         mhiImage = original.duplicate();
-        closeAllExcept(mhiImage,original);
+        closeResources(); // memory management
         
-        ImagePlus mhi = null;
-
-        //MHI
+        // MHI processing
         mhiScript.setImage(mhiImage);
         mhiScript.run("");
         mhiImage = mhiScript.getMHIImage();
@@ -50,10 +44,11 @@ public class MHI_TrackMate implements PlugIn {
             IJ.log("MHI Image is null");
             return; 
         }
-        closeAllExcept(mhiScript.getMHIImage(), original);
-                
-        // Tracking algorithm and the calls on combined 
+        closeResources();
+        
+        // Tracking
         launchTrackMate(original);
+        closeResources(); 
     }
     private void closeAllExcept(ImagePlus keepOpen1, ImagePlus keepOpen2) {
         int[] windowList = WindowManager.getIDList();
@@ -66,6 +61,12 @@ public class MHI_TrackMate implements PlugIn {
                 }
             }
         }
+    }
+    private void closeResources() { //memory management
+        System.gc();
+        closeAllExcept(mhiImage, original);
+        IJ.freeMemory();
+        
     }
     /** TODO: Implement the tracking algorithm */
     private void launchTrackMate(ImagePlus image) {
@@ -212,15 +213,28 @@ class MHI_Script implements PlugIn {
             IJ.log("Runtime exception occurred in MHI_Script: " + e.getMessage());
         } catch (Exception e) {
             IJ.log("An unexpected error occurred in MHI_Script: " + e.getMessage());
+        } finally {
+            closeResources(); 
         }
     }
 
     private void performOperation(String operationName, Runnable operation) {
         operation.run();
         updateImageToLatest();
-        MHI_TrackMate.this.closeAllExcept(this.image, MHI_TrackMate.this.original);
+        closeResources();
+       /* try {
+            Thread.sleep(3000); // 3000 milliseconds = 3 seconds
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); 
+            IJ.log("Interrupted while waiting after operation: " + operationName);
+        }
+        */ 
     }
-
+    private void closeResources() {
+        System.gc();
+        MHI_TrackMate.this.closeAllExcept(this.image, MHI_TrackMate.this.original);
+        IJ.freeMemory();
+    }
     public ImagePlus getMHIImage() {
         return this.image;
     }
@@ -253,6 +267,9 @@ class MHI_Script implements PlugIn {
     private void updateImageToLatest() {
         ImagePlus latestImage = WindowManager.getCurrentImage();
         if (latestImage != null && !latestImage.equals(this.image)) {
+            if (this.image != null) {
+                this.image.close(); //close previous image to free memory up
+            }
             this.image = latestImage;
         }
     }
