@@ -1,5 +1,3 @@
-// package edu.pdx.imagej.reconstruction.filter;
-
 import ij.IJ;
 import ij.ImagePlus;
 
@@ -12,35 +10,47 @@ import ij.measure.ResultsTable;
 import ij.gui.Roi;
 import ij.gui.ShapeRoi;
 import ij.gui.WaitForUserDialog;
+import ij.gui.GenericDialog;
 
 import javafx.scene.effect.Light.Point;
 import javafx.scene.shape.Rectangle;
 
-import edu.pdx.imagej.reconstruction.ConstReconstructionField;
-import edu.pdx.imagej.reconstruction.ReconstructionField;
+import com.opencsv.CSVWriter;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 
-/** Need to configure machine library to access the following packages
+/*  Takes a window of a processed image (DHM reconstruction), using 
+ *  an ROI. Scans all t and z slices and stores detected max value 
+ *  pixels. User is given option to save data to CSV file with either
+ *  a custom name or default generated one with date and how the data
+ *  is sorted. 
+ * 
+ *  At the moment it's hard to tell *where* one should select their
+ *  ROI. Manually, it's a helpful visual guide to use a z-projection
+ *  separately to see where the paths are going. From there, I want 
+ *  the user to be able to make sense of where the path is traveling
+ *  between z-slices. 
+ * 
+ *  I want to take the CSV file and be able to do a scan to either
+ *  recreate the path within Fiji or take it to Python using their
+ *  cv2 library. A CSV file containing the dimensions of the ROI is 
+ *  saved as well to be utilized later for this purpose.
  * 
  */
-// import edu.pdx.imagej.reconstruction.plugin.ReconstructionPlugin;
-// import edu.pdx.imagej.reconstruction.plugin.AbstractReconstructionPlugin;
-// import edu.pdx.imagej.reconstruction.plugin.MainReconstructionPlugin;
-// import edu.pdx.imagej.reconstruction.ReconstructionField;
-// import edu.pdx.imagej.reconstruction.ConstReconstructionField;
-
-// import org.scijava.Priority;
-// import org.scijava.plugin.Parameter;
-// import org.scijava.plugin.Plugin;
-
-
 public class Z_Locator_With_ROI implements PlugInFilter {
+
+    private ResultsTable table;
 
     @Override
     public void run(ImageProcessor ip) {
         
         ImagePlus imp = IJ.getImage();
-        ResultsTable table = new ResultsTable();
+        table = new ResultsTable();
 
         // Get ROI from the ROI Manager
         Roi roi = imp.getRoi();
@@ -51,35 +61,79 @@ public class Z_Locator_With_ROI implements PlugInFilter {
         }
 
         // Get dimensions of the selected ROI
-        int roiX = roi.getBounds().x;
-        int roiY = roi.getBounds().y;
-        int roiWidth = roi.getBounds().width;
-        int roiHeight = roi.getBounds().height;
+        int[] RoiDimensions;
+        RoiDimensions = new int[4];
+
+        int roiX = RoiDimensions[0] = roi.getBounds().x;
+        int roiY = RoiDimensions[1] = roi.getBounds().y;
+        int roiWidth = RoiDimensions[2] = roi.getBounds().width;
+        int roiHeight = RoiDimensions[3] = roi.getBounds().height;
 
         // Get image sequence information
         int numFrames = imp.getNFrames();
         int numSlices = imp.getNSlices();
-        
-        // Iterate through all time points and z slices
-        for (int t = 1; t <= numFrames; t++) {
-            for (int z = 1; z <= numSlices; z++) {
-                imp.setPosition(1, z, t);
 
-                // Duplicate the ROI for each slice and time point
-                Roi sliceRoi = (Roi) roi.clone();
-                sliceRoi.setLocation(roiX, roiY);
+        //Prompt user to choose sorting options
+        String userSelection = new String();
+        userSelection = promptSortOption();
 
-                // Crop the image to the selected ROI
-                ImageProcessor croppedIp = ip.crop();
-                croppedIp.setRoi(sliceRoi);
+        if (null == userSelection) {
+            return; // user canceled process
+        } 
 
-                // Detect particles within the cropped ROI
-                detectParticles(croppedIp, table, t, z, roiX, roiY, roiWidth, roiHeight);
+        //
+        else if("time" == userSelection) {
+            for (int t = 1; t <= numFrames; t++) {
+                for (int z = 1; z <= numSlices; z++) {
+                    imp.setPosition(1, z, t);
+
+                    // Duplicate the ROI for each slice and time point
+                    Roi sliceRoi = (Roi) roi.clone();
+                    sliceRoi.setLocation(roiX, roiY);
+
+                    // Crop the image to the selected ROI
+                    ImageProcessor croppedIp = ip.crop();
+                    croppedIp.setRoi(sliceRoi);
+
+                    // Detect particles within the cropped ROI
+                    detectParticles(croppedIp, table, t, z, roiX, roiY, roiWidth, roiHeight);
+                }
+            }
+        } else {
+            for (int z = 1; z <= numSlices; ++z){
+                // ImageProcessor binaryIp = imp.getProcessor().duplicate();
+                for (int t = 1; t <= numFrames; ++t) {
+                    imp.setPosition(1, z, t);
+
+                    Roi sliceRoi = (Roi) roi.clone();
+                    sliceRoi.setLocation(roiX, roiY);
+
+                    ImageProcessor croppedIp = ip.crop();
+                    croppedIp.setRoi(sliceRoi);
+
+                    detectParticles(croppedIp, table, t, z, roiX, roiY, roiWidth, roiHeight);
+                }
             }
         }
 
         // Display the ResultsTable
         table.show("Detected Particles");
+        
+        promptSaveToCSV(userSelection, RoiDimensions);
+    }
+
+    public static String promptSortOption() {
+        GenericDialog gd = new GenericDialog("Sort Option");
+        gd.addRadioButtonGroup("Sort by:", new String[]{"Time", "Z Slices"}, 1, 2, "Time");
+        gd.showDialog();
+
+        if (gd.wasCanceled()) {
+            return null;
+        } else if (gd.getNextRadioButton().equals("Time")) {
+            return "time";
+        } else {
+            return "z slices";
+        }
     }
 
     private void detectParticles(ImageProcessor ip, ResultsTable table, int timePoint, int focalPoint, int roiX, int roiY, int roiWidth, int roiHeight) {
@@ -99,107 +153,120 @@ public class Z_Locator_With_ROI implements PlugInFilter {
         }
     }
 
-        // NEEDS CONFIGURATION
-        // /** Manually set the filter.  Use this if you don't want the filter to be
-        //  * selected through the gui.
-        //  *
-        //  * @param roi The roi to set the filter to be.
-        //  */
-        // public void setFilter(Roi roi)
-        // {
-        //     M_roi = roi;
-        //     M_filtered = true;
-        // }
+    public void saveResultsTableToCSV(ResultsTable table, String filePath) {
+        try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
+            // Write header
+            writer.writeNext(table.getHeadings());
+
+            // Write data
+            for (int i = 0; i < table.getCounter(); i++) {
+                String[] row = new String[table.getHeadings().length];
+                for (int j = 0; j < row.length; j++) {
+                    row[j] = table.getStringValue(j, i);
+                }
+                writer.writeNext(row);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // private void promptSaveToCSV(String userSelection) {
+
+    //     String sortingFlag = new String();
+
+    //     if("time" == userSelection) {
+    //         sortingFlag = "sorted_time_";
+    //     } else {
+    //         sortingFlag = "sorted_z_slices_";
+    //     }
+
+    //     GenericDialog gd = new GenericDialog("Save to CSV");
+    //     gd.addStringField("File name (leave blank for default):", "");
+    //     gd.showDialog();
+
+    //     if (gd.wasOKed()) {
+    //         String fileName = gd.getNextString();
+    //         if (fileName.isEmpty()) {
+    //             // Generate default file name based on current date and time
+    //             SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd_HHmmss");
+    //             Date now = new Date();
+    //             fileName = "detected_particles_" + sortingFlag + formatter.format(now) + ".csv";
+    //         } else {
+    //             fileName += ".csv";
+    //         }
+
+    //         String directoryPath = IJ.getDirectory("Choose a Directory");
+    //         if (directoryPath != null) {
+    //             String filePath = directoryPath + File.separator + fileName;
+    //             saveResultsTableToCSV(table, filePath);
+    //             IJ.showMessage("Results saved to " + filePath);
+    //         }
+    //     }
+    // }
     
-        // public void setDefaultMessage(String message)
-        // {
-        //     M_message = message;
-        // }
-        // /** Get the filter from the user through the gui, if a filter hasn't been
-        //  * set already.
-        //  *
-        //  * @param field The field to acquire the filter from
-        //  */
-        // @Override
-        // public void processOriginalHologram(ConstReconstructionField field)
-        // {
-        //     if (!M_filtered) {
-        //         getFilter(field, M_message);
-        //         M_filtered = true;
-        //     }
-        // }
-        // /** Get the filter from a field.
-        //  *
-        //  * @param field The field to acquire the filter from
-        //  * @param message The message to display to the user describing what's going
-        //  *                on.
-        //  */
-        // public void getFilter(ConstReconstructionField field, String message)
-        // {
-        //     double[][] fourier = field.fourier().getAmp();
-        //     float[][] array = new float[fourier.length][fourier[0].length];
-        //     for (int x = 0; x < fourier.length; ++x) {
-        //         for (int y = 0; y < fourier[0].length; ++y) {
-        //             array[x][y] = (float)fourier[x][y];
-        //         }
-        //     }
-        //     FloatProcessor proc = new FloatProcessor(array);
-        //     proc.log();
-        //     ImagePlus imp = new ImagePlus("FFT", proc);
-        //     imp.show();
-        //     WaitForUserDialog dialog = new WaitForUserDialog(message);
-        //     dialog.show();
-        //     if (dialog.escPressed()) {
-        //         imp.hide();
-        //         M_error = true;
-        //         return;
-        //     }
-        //     M_roi = imp.getRoi();
-        //     imp.hide();
-        // }
-        // /** Filter a field (just calls {@link filterField filterField}.
-        //  *
-        //  * @param field The field to filter.
-        //  * @param t Unused.
-        //  */
-        // @Override
-        // public void processFilteredField(ReconstructionField field, int t)
-        // {
-        //     filterField(field);
-        // }
-        // /** Filter a field.  This is separate from {@link processFilteredField
-        //  * processFilteredField} so that other plugins can filter by the same roi.
-        //  *
-        //  * @param field The field to filter.
-        //  */
-        // public void filterField(ReconstructionField field)
-        // {
-        //     if (M_roi == null) return; // If the user didn't select any roi
-        //     double[][] fourier = field.fourier().getField();
-        //     double[][] filtered = new double[fourier.length][fourier[0].length];
-        //     Rectangle rect = M_roi.getBounds();
-        //     int centerX = (int)rect.getCenterX();
-        //     int centerY = (int)rect.getCenterY();
-        //     int xp = field.fourier().width() / 2 - centerX;
-        //     int yp = field.fourier().height() / 2 - centerY;
-        //     for (Point p : M_roi) {
-        //         if (p.x < 0 || p.x >= fourier.length) continue;
-        //         if (p.y < 0 || p.y >= fourier[0].length / 2) continue;
-        //         filtered[p.x + xp][(p.y + yp) * 2] = fourier[p.x][p.y * 2];
-        //         filtered[p.x + xp][(p.y + yp) * 2 + 1] = fourier[p.x][p.y * 2 + 1];
-        //     }
-        //     field.fourier().setField(filtered);
-        // }
+    public void promptSaveToCSV(String userSelection, int [] RoiDimensions) {
+
+        String sortingFlag = new String();
+
+        if("time" == userSelection) {
+            sortingFlag = "sorted_time_";
+        } else {
+            sortingFlag = "sorted_z_slices_";
+        }
+
+        GenericDialog gd = new GenericDialog("Save to CSV");
+        gd.addStringField("File name (leave blank for default):", "");
+        gd.showDialog();
+
+        if (gd.wasOKed()) {
+            String fileName = gd.getNextString();
+            if (fileName.isEmpty()) {
+                // Generate default file name based on current date and time
+                SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd_HHmmss");
+                Date now = new Date();
+                fileName = formatter.format(now);
+            } 
+
+            String machineDirectory = IJ.getDirectory("Select a Location to save CSV data");
+            if(machineDirectory != null) {
+                // Create subfolder
+                String subfolderPath = machineDirectory + File.separator + "results_" + fileName;
+                File subfolder = new File(subfolderPath);
+                if (!subfolder.exists()) { 
+                    subfolder.mkdir();
+                }
+
+                // Define paths for both CSV files
+                String filePath1 = subfolderPath + File.separator + fileName + "detected_particles_" + sortingFlag + ".csv";
+                String filePath2 = subfolderPath + File.separator + fileName + "_roi_dimensions.csv";
+
+                // Save to CSV files
+                saveResultsTableToCSV(table, filePath1);
+                saveROIDimensionsToCSV(RoiDimensions[0], RoiDimensions[1], RoiDimensions[2], RoiDimensions[3], filePath2);
+
+                IJ.showMessage("Results saved to " + subfolderPath);
+            }
+        }
+    }
+
+    public static void saveROIDimensionsToCSV(int roiX, int roiY, int roiWidth, int roiHeight, String filePath) {
+        try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
+            // Write header
+            String[] header = {"ROI X", "ROI Y", "ROI Width", "ROI Height"};
+            writer.writeNext(header);
+
+            // Write ROI dimensions
+            String[] row = {String.valueOf(roiX), String.valueOf(roiY), String.valueOf(roiWidth), String.valueOf(roiHeight)};
+            writer.writeNext(row);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public int setup(String arg, ImagePlus imp) {
         return DOES_8G + STACK_REQUIRED + ROI_REQUIRED;
     }
 
-    // @Override public boolean hasError() {return M_error;}
-    // @Override public Filter duplicate() {return new Filter();}
-    // private Roi M_roi;
-    // private boolean M_error = false;
-    // private boolean M_filtered = false;
-    // private String M_message = "Please select the ROI and then press OK.";
 }
